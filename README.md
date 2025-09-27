@@ -1,275 +1,341 @@
-# STContacts
+# STLocation
 
-一个简洁易用的iOS联系人管理Swift Package，基于Apple的Contacts框架封装，提供联系人权限管理和数据获取功能。
+一个基于 CoreLocation 的 Swift Package Manager 位置管理库，提供简洁易用的位置获取、权限管理和地理编码功能。
 
 ## 功能特性
 
-- 🔐 联系人权限请求和管理
-- 📱 获取设备所有联系人信息
-- ✅ 权限状态检查
-- 🎯 基于CNContact的完整联系人数据
-- 📦 Swift Package Manager支持
-- 🛡️ 错误处理和异常捕获
+- 🎯 **单次定位**: 获取当前精确位置
+- 🔄 **持续定位**: 实时位置更新
+- 🔐 **权限管理**: 智能的位置权限请求和状态检查
+- 📍 **地理编码**: 自动将坐标转换为地址信息
+- ⚡ **缓存机制**: 智能位置缓存，提高性能
+- 🛡️ **错误处理**: 完善的错误类型和处理机制
+- 🎛️ **配置灵活**: 多种精度和超时配置选项
+- 🔒 **线程安全**: 使用并发队列确保线程安全
 
 ## 系统要求
 
 - iOS 13.0+
-- Swift 5.0+
-- Xcode 12.0+
+- Swift 5.9+
+- Xcode 15.0+
 
 ## 安装方式
 
 ### Swift Package Manager
 
-在Xcode中，选择 `File` → `Add Package Dependencies...`，然后输入以下URL：
-
-```
-https://github.com/i-stack/STContacts.git
-```
-
-或者在 `Package.swift` 文件中添加依赖：
+在你的 `Package.swift` 文件中添加依赖：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/i-stack/STContacts.git", branch: "main")
+    .package(url: "https://github.com/your-username/STLocation.git", from: "1.0.0")
 ]
 ```
 
-### 手动集成
+或者在 Xcode 中：
+1. 选择 `File` → `Add Package Dependencies`
+2. 输入仓库 URL: `https://github.com/your-username/STLocation.git`
+3. 选择版本并添加到你的项目
 
-1. 下载源码到本地
-2. 将 `Sources` 文件夹拖拽到你的项目中
-3. 确保项目设置中包含了必要的框架依赖
-
-## 使用方法
-
-### 1. 导入框架
+### 导入
 
 ```swift
-import STContacts
-import Contacts
+import STLocation
 ```
 
-### 2. 权限管理
+## 权限配置
 
-#### 检查联系人权限状态
+在 `Info.plist` 中添加位置权限说明：
 
-```swift
-let permissionStatus = STContactManager.shared.st_checkContactPermission()
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>此应用需要访问您的位置以提供基于位置的服务</string>
 
-switch permissionStatus {
-case .authorized:
-    print("已授权")
-case .denied:
-    print("已拒绝")
-case .restricted:
-    print("受限制")
-case .notDetermined:
-    print("未确定")
-@unknown default:
-    print("未知状态")
-}
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>此应用需要访问您的位置以提供基于位置的服务</string>
 ```
 
-#### 请求联系人权限
+## 基本使用
+
+### 1. 获取当前位置（单次定位）
 
 ```swift
-STContactManager.shared.st_requestContactPermission { granted, contacts, error in
-    DispatchQueue.main.async {
-        if granted {
-            print("权限获取成功，联系人数量：\(contacts.count)")
-            // 处理联系人数据
-        } else {
-            print("权限被拒绝：\(error)")
-        }
+STLocationManager.shared.st_getCurrentLocation { result in
+    switch result {
+    case .success(let locationInfo):
+        print("位置信息: \(locationInfo.formattedAddress)")
+        print("坐标: \(locationInfo.coordinateString)")
+        print("经度: \(locationInfo.longitude)")
+        print("纬度: \(locationInfo.latitude)")
+    case .failure(let error):
+        print("获取位置失败: \(error.localizedDescription)")
     }
 }
 ```
 
-### 3. 获取联系人数据
-
-#### 直接获取联系人（需要先确保有权限）
+### 2. 请求位置权限
 
 ```swift
-STContactManager.shared.st_fetchContactInfo { success, contacts, error in
-    DispatchQueue.main.async {
-        if success {
-            print("成功获取 \(contacts.count) 个联系人")
-            
-            for contact in contacts {
-                print("姓名：\(contact.givenName) \(contact.familyName)")
-                
-                // 获取电话号码
-                for phoneNumber in contact.phoneNumbers {
-                    print("电话：\(phoneNumber.value.stringValue)")
-                }
-            }
-        } else {
-            print("获取联系人失败：\(error)")
-        }
+// 请求使用期间的位置权限
+STLocationManager.shared.st_requestWhenInUseAuthorization { status in
+    switch status {
+    case .authorizedWhenInUse, .authorizedAlways:
+        print("位置权限已授权")
+        // 现在可以获取位置
+    case .denied, .restricted:
+        print("位置权限被拒绝")
+        // 引导用户到设置页面
+    case .notDetermined:
+        print("位置权限未确定")
+    @unknown default:
+        break
+    }
+}
+
+// 请求始终的位置权限
+STLocationManager.shared.st_requestAlwaysAuthorization { status in
+    // 处理权限状态
+}
+```
+
+### 3. 检查当前位置权限状态
+
+```swift
+STLocationManager.shared.st_checkLocationPermission { status in
+    switch status {
+    case .authorizedWhenInUse, .authorizedAlways:
+        print("已有位置权限")
+    case .denied, .restricted:
+        print("位置权限被拒绝")
+    case .notDetermined:
+        print("位置权限未确定")
+    @unknown default:
+        break
     }
 }
 ```
 
-### 4. 完整使用示例
+### 4. 使用自定义配置
 
 ```swift
-import UIKit
-import STContacts
-import Contacts
+// 高精度配置
+let highAccuracyConfig = STLocationConfig.highAccuracy
+STLocationManager.shared.st_getCurrentLocation(config: highAccuracyConfig) { result in
+    // 处理结果
+}
 
-class ViewController: UIViewController {
+// 低精度配置（省电）
+let lowAccuracyConfig = STLocationConfig.lowAccuracy
+STLocationManager.shared.st_getCurrentLocation(config: lowAccuracyConfig) { result in
+    // 处理结果
+}
+
+// 自定义配置
+let customConfig = STLocationConfig(
+    desiredAccuracy: kCLLocationAccuracyBest,
+    distanceFilter: 5.0,
+    timeout: 20.0,
+    maximumAge: 180.0
+)
+STLocationManager.shared.st_getCurrentLocation(config: customConfig) { result in
+    // 处理结果
+}
+```
+
+### 5. 持续位置更新
+
+```swift
+// 开始持续位置更新
+STLocationManager.shared.st_startUpdatingLocation { result in
+    switch result {
+    case .success(let locationInfo):
+        print("位置更新: \(locationInfo.formattedAddress)")
+    case .failure(let error):
+        print("位置更新失败: \(error.localizedDescription)")
+    }
+}
+
+// 停止位置更新
+STLocationManager.shared.st_stopUpdatingLocation()
+```
+
+### 6. 获取最后已知位置
+
+```swift
+if let lastLocation = STLocationManager.shared.st_getLastKnownLocation() {
+    print("最后位置: \(lastLocation.formattedAddress)")
+    print("时间: \(lastLocation.timestamp)")
+}
+```
+
+### 7. 清除位置缓存
+
+```swift
+STLocationManager.shared.st_clearLocationCache()
+```
+
+## 配置选项
+
+### STLocationConfig
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `desiredAccuracy` | `CLLocationAccuracy` | `kCLLocationAccuracyNearestTenMeters` | 期望的定位精度 |
+| `distanceFilter` | `CLLocationDistance` | `10.0` | 位置更新的最小距离（米） |
+| `timeout` | `TimeInterval` | `30.0` | 获取位置的超时时间（秒） |
+| `maximumAge` | `TimeInterval` | `300.0` | 位置缓存的最大有效期（秒） |
+
+### 预设配置
+
+```swift
+// 默认配置
+STLocationConfig.default
+
+// 高精度配置
+STLocationConfig.highAccuracy
+
+// 低精度配置（省电）
+STLocationConfig.lowAccuracy
+```
+
+## 数据结构
+
+### STLocationInfo
+
+位置信息结构体，包含以下属性：
+
+```swift
+public struct STLocationInfo {
+    public let name: String?                    // 地点名称
+    public let country: String?                 // 国家
+    public let latitude: Double                 // 纬度
+    public let longitude: Double                // 经度
+    public let locality: String?                // 城市
+    public let subLocality: String?             // 区域
+    public let thoroughfare: String?            // 街道
+    public let subThoroughfare: String?         // 门牌号
+    public let isoCountryCode: String?          // 国家代码
+    public let administrativeArea: String?      // 省份/州
+    public let postalCode: String?              // 邮编
+    public let timestamp: Date                  // 时间戳
+    
+    // 计算属性
+    public var formattedAddress: String         // 格式化地址
+    public var coordinateString: String         // 坐标字符串
+}
+```
+
+### STLocationError
+
+错误类型枚举：
+
+```swift
+public enum STLocationError: Error {
+    case authorizationDenied        // 权限被拒绝
+    case authorizationRestricted    // 权限受限
+    case locationServicesDisabled   // 位置服务已禁用
+    case timeout                    // 获取位置超时
+    case networkError              // 网络错误
+    case geocodingFailed           // 地理编码失败
+    case unknown(Error)            // 未知错误
+}
+```
+
+## 完整使用示例
+
+```swift
+import STLocation
+
+class LocationViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadContacts()
+        setupLocation()
     }
     
-    private func loadContacts() {
-        // 先检查权限状态
-        let status = STContactManager.shared.st_checkContactPermission()
-        
-        switch status {
-        case .authorized:
-            // 已授权，直接获取联系人
-            fetchContacts()
-            
-        case .notDetermined:
-            // 未确定，请求权限
-            requestPermission()
-            
-        case .denied, .restricted:
-            // 被拒绝或受限制，提示用户
-            showPermissionAlert()
-            
-        @unknown default:
-            break
+    private func setupLocation() {
+        // 1. 检查权限状态
+        STLocationManager.shared.st_checkLocationPermission { [weak self] status in
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                self?.getCurrentLocation()
+            case .notDetermined:
+                self?.requestLocationPermission()
+            case .denied, .restricted:
+                self?.showPermissionAlert()
+            @unknown default:
+                break
+            }
         }
     }
     
-    private func requestPermission() {
-        STContactManager.shared.st_requestContactPermission { [weak self] granted, contacts, error in
+    private func requestLocationPermission() {
+        STLocationManager.shared.st_requestWhenInUseAuthorization { [weak self] status in
+            if status == .authorizedWhenInUse {
+                self?.getCurrentLocation()
+            }
+        }
+    }
+    
+    private func getCurrentLocation() {
+        // 使用高精度配置
+        STLocationManager.shared.st_getCurrentLocation(config: .highAccuracy) { [weak self] result in
             DispatchQueue.main.async {
-                if granted {
-                    self?.processContacts(contacts)
-                } else {
-                    print("权限被拒绝：\(error)")
+                switch result {
+                case .success(let locationInfo):
+                    self?.updateUI(with: locationInfo)
+                case .failure(let error):
+                    self?.showError(error)
                 }
             }
         }
     }
     
-    private func fetchContacts() {
-        STContactManager.shared.st_fetchContactInfo { [weak self] success, contacts, error in
-            DispatchQueue.main.async {
-                if success {
-                    self?.processContacts(contacts)
-                } else {
-                    print("获取联系人失败：\(error)")
-                }
-            }
-        }
+    private func updateUI(with locationInfo: STLocationInfo) {
+        // 更新界面显示位置信息
+        print("地址: \(locationInfo.formattedAddress)")
+        print("坐标: \(locationInfo.coordinateString)")
     }
     
-    private func processContacts(_ contacts: [CNContact]) {
-        print("成功获取 \(contacts.count) 个联系人")
-        
-        for contact in contacts {
-            let fullName = "\(contact.givenName) \(contact.familyName)".trimmingCharacters(in: .whitespaces)
-            print("联系人：\(fullName)")
-            
-            for phoneNumber in contact.phoneNumbers {
-                print("  电话：\(phoneNumber.value.stringValue)")
-            }
-        }
+    private func showError(_ error: STLocationError) {
+        let alert = UIAlertController(title: "位置获取失败", message: error.localizedDescription, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "确定", style: .default))
+        present(alert, animated: true)
     }
     
     private func showPermissionAlert() {
-        let alert = UIAlertController(
-            title: "需要联系人权限",
-            message: "请在设置中允许访问联系人",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "设置", style: .default) { _ in
+        let alert = UIAlertController(title: "需要位置权限", message: "请在设置中开启位置权限", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "去设置", style: .default) { _ in
             if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
                 UIApplication.shared.open(settingsURL)
             }
         })
-        
         alert.addAction(UIAlertAction(title: "取消", style: .cancel))
         present(alert, animated: true)
     }
 }
 ```
 
-## API 文档
-
-### STContactManager
-
-#### 属性
-
-- `shared: STContactManager` - 单例实例
-
-#### 方法
-
-##### st_requestContactPermission(completion:)
-
-请求联系人权限并获取联系人数据。
-
-**参数：**
-- `completion: (Bool, [CNContact], String) -> Void` - 完成回调
-  - `Bool` - 是否授权成功
-  - `[CNContact]` - 联系人列表
-  - `String` - 错误信息
-
-##### st_fetchContactInfo(completion:)
-
-获取联系人信息（需要先确保有权限）。
-
-**参数：**
-- `completion: (Bool, [CNContact], String) -> Void` - 完成回调
-  - `Bool` - 是否成功
-  - `[CNContact]` - 联系人列表
-  - `String` - 错误信息
-
-##### st_checkContactPermission() -> CNAuthorizationStatus
-
-检查联系人权限状态。
-
-**返回值：**
-- `CNAuthorizationStatus` - 权限状态枚举值
-
 ## 注意事项
 
-1. **隐私权限**：使用前需要在 `Info.plist` 中添加联系人权限说明：
-   ```xml
-   <key>NSContactsUsageDescription</key>
-   <string>此应用需要访问您的联系人以便提供更好的服务</string>
-   ```
-
-2. **线程安全**：所有回调都在后台线程执行，如需更新UI请切换到主线程。
-
-3. **错误处理**：建议始终检查回调中的成功状态和错误信息。
-
-4. **权限状态**：权限状态可能发生变化，建议在每次使用前检查权限状态。
-
-## 依赖项
-
-- `STProjectBase` - 基础项目框架依赖
+1. **权限处理**: 确保在 Info.plist 中添加相应的权限说明
+2. **线程安全**: 所有回调都在主线程执行，但内部使用并发队列保证线程安全
+3. **电池优化**: 使用低精度配置可以节省电池电量
+4. **缓存机制**: 库会自动缓存位置信息，避免频繁请求
+5. **超时处理**: 设置合适的超时时间，避免长时间等待
 
 ## 许可证
 
-请查看项目根目录的许可证文件。
+MIT License
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request 来改进这个项目。
+欢迎提交 Issue 和 Pull Request！
 
 ## 更新日志
 
-### v1.0.0
+### 1.0.0
 - 初始版本发布
-- 支持联系人权限管理
-- 支持联系人数据获取
-- 提供完整的API接口
+- 支持单次定位和持续定位
+- 完善的权限管理
+- 地理编码功能
+- 位置缓存机制
