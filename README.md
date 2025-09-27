@@ -27,13 +27,13 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-username/STLocation.git", from: "1.0.0")
+    .package(url: "https://github.com/i-stack/STLocation.git", from: "1.0.0")
 ]
 ```
 
 或者在 Xcode 中：
 1. 选择 `File` → `Add Package Dependencies`
-2. 输入仓库 URL: `https://github.com/your-username/STLocation.git`
+2. 输入仓库 URL: `https://github.com/i-stack/STLocation.git`
 3. 选择版本并添加到你的项目
 
 ### 导入
