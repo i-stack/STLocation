@@ -1,48 +1,68 @@
 # STLocation
 
-一个基于 CoreLocation 的 Swift Package Manager 位置管理库，提供简洁易用的位置获取、权限管理和地理编码功能。
+> **A concise CoreLocation-based Swift package** for location fetching, permission management and geocoding — single-shot & continuous updates, smart caching and thread-safe design. Supports Swift Package Manager.
 
-## 功能特性
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat)](https://github.com/i-stack/STLocation/blob/main/LICENSE)
+[![Platform](https://img.shields.io/badge/platform-iOS%2013%2B-lightgrey?style=flat)](https://github.com/i-stack/STLocation)
+[![Swift](https://img.shields.io/badge/Swift-5.9%20%7C%206.0-orange?style=flat-square)](https://www.swift.org)
+[![SPM](https://img.shields.io/badge/SPM-supported-brightgreen?style=flat)](https://github.com/i-stack/STLocation)
+[![Xcode](https://img.shields.io/badge/Xcode-15%2B-147EFB?style=flat)](https://developer.apple.com/xcode/)
 
-- 🎯 **单次定位**: 获取当前精确位置
-- 🔄 **持续定位**: 实时位置更新
-- 🔐 **权限管理**: 智能的位置权限请求和状态检查
-- 📍 **地理编码**: 自动将坐标转换为地址信息
-- ⚡ **缓存机制**: 智能位置缓存，提高性能
-- 🛡️ **错误处理**: 完善的错误类型和处理机制
-- 🎛️ **配置灵活**: 多种精度和超时配置选项
-- 🔒 **线程安全**: 使用并发队列确保线程安全
+**STLocation** is an open-source **iOS location manager** written in **Swift**, built on `CoreLocation`. It provides single-shot & continuous location updates, intelligent permission requests, automatic geocoding, smart location caching and a complete error-handling model.
 
-## 系统要求
+STLocation 是一个基于 CoreLocation 的 Swift 位置管理库，提供简洁易用的位置获取、权限管理和地理编码功能。
 
-- iOS 13.0+
-- Swift 5.9+
-- Xcode 15.0+
+## 📋 目录 | Table of Contents
 
-## 安装方式
+- [特性 | Features](#features)
+- [系统要求 | Requirements](#requirements)
+- [安装方式 | Installation](#installation)
+- [权限配置 | Permissions](#permissions)
+- [快速开始 | Quick Start](#quick-start)
+  - [单次定位](#single)
+  - [持续定位](#continuous)
+  - [权限请求与检查](#auth)
+  - [配置选项](#config)
+- [数据结构 | Types](#types)
+- [许可证 | License](#license)
+
+<a id="features"></a>
+## 🎯 特性 | Features
+
+| 类别 | 能力 |
+| --- | --- |
+| 定位 | 单次定位、持续位置更新 |
+| 权限 | 智能权限请求（使用期间 / 始终）与状态检查 |
+| 地理编码 | 自动将坐标转换为地址信息 |
+| 缓存 | 智能位置缓存，提高性能、降低请求频率 |
+| 配置 | 多种精度、距离过滤与超时配置 |
+| 健壮性 | 完善的错误类型与并发队列保证的线程安全 |
+
+<a id="installation"></a>
+## 🚀 安装方式 | Installation
 
 ### Swift Package Manager
 
-在你的 `Package.swift` 文件中添加依赖：
-
 ```swift
 dependencies: [
-    .package(url: "https://github.com/i-stack/STLocation.git", from: "1.0.0")
+    .package(url: "https://github.com/i-stack/STLocation.git", from: "1.0.0"),
+],
+targets: [
+    .target(
+        name: "YourApp",
+        dependencies: [.product(name: "STLocation", package: "STLocation")]
+    )
 ]
 ```
 
-或者在 Xcode 中：
-1. 选择 `File` → `Add Package Dependencies`
-2. 输入仓库 URL: `https://github.com/i-stack/STLocation.git`
-3. 选择版本并添加到你的项目
-
-### 导入
+或在 Xcode 中选择 `File ▸ Add Package Dependencies...`，输入 `https://github.com/i-stack/STLocation.git`。
 
 ```swift
 import STLocation
 ```
 
-## 权限配置
+<a id="permissions"></a>
+## 🔧 权限配置 | Permissions
 
 在 `Info.plist` 中添加位置权限说明：
 
@@ -54,288 +74,132 @@ import STLocation
 <string>此应用需要访问您的位置以提供基于位置的服务</string>
 ```
 
-## 基本使用
+<a id="quick-start"></a>
+## ⚡ 快速开始 | Quick Start
 
-### 1. 获取当前位置（单次定位）
+<a id="single"></a>
+### 单次定位
 
 ```swift
 STLocationManager.shared.st_getCurrentLocation { result in
     switch result {
-    case .success(let locationInfo):
-        print("位置信息: \(locationInfo.formattedAddress)")
-        print("坐标: \(locationInfo.coordinateString)")
-        print("经度: \(locationInfo.longitude)")
-        print("纬度: \(locationInfo.latitude)")
+    case .success(let info):
+        print("地址: \(info.formattedAddress)")
+        print("坐标: \(info.coordinateString)")
     case .failure(let error):
         print("获取位置失败: \(error.localizedDescription)")
     }
 }
 ```
 
-### 2. 请求位置权限
+<a id="continuous"></a>
+### 持续定位
 
 ```swift
-// 请求使用期间的位置权限
+STLocationManager.shared.st_startUpdatingLocation { result in
+    switch result {
+    case .success(let info): print("位置更新: \(info.formattedAddress)")
+    case .failure(let error): print("位置更新失败: \(error.localizedDescription)")
+    }
+}
+
+// 停止更新
+STLocationManager.shared.st_stopUpdatingLocation()
+
+// 最后已知位置 / 清除缓存
+if let last = STLocationManager.shared.st_getLastKnownLocation() {
+    print("最后位置: \(last.formattedAddress)")
+}
+STLocationManager.shared.st_clearLocationCache()
+```
+
+<a id="auth"></a>
+### 权限请求与检查
+
+```swift
 STLocationManager.shared.st_requestWhenInUseAuthorization { status in
     switch status {
     case .authorizedWhenInUse, .authorizedAlways:
         print("位置权限已授权")
-        // 现在可以获取位置
     case .denied, .restricted:
         print("位置权限被拒绝")
-        // 引导用户到设置页面
     case .notDetermined:
         print("位置权限未确定")
-    @unknown default:
-        break
+    @unknown default: break
     }
 }
 
-// 请求始终的位置权限
-STLocationManager.shared.st_requestAlwaysAuthorization { status in
-    // 处理权限状态
-}
-```
-
-### 3. 检查当前位置权限状态
-
-```swift
 STLocationManager.shared.st_checkLocationPermission { status in
-    switch status {
-    case .authorizedWhenInUse, .authorizedAlways:
-        print("已有位置权限")
-    case .denied, .restricted:
-        print("位置权限被拒绝")
-    case .notDetermined:
-        print("位置权限未确定")
-    @unknown default:
-        break
-    }
+    // 同上处理 status
 }
 ```
 
-### 4. 使用自定义配置
+<a id="config"></a>
+### 配置选项
 
 ```swift
-// 高精度配置
-let highAccuracyConfig = STLocationConfig.highAccuracy
-STLocationManager.shared.st_getCurrentLocation(config: highAccuracyConfig) { result in
-    // 处理结果
-}
+// 高精度 / 低精度（省电） / 默认
+STLocationManager.shared.st_getCurrentLocation(config: .highAccuracy) { _ in }
+STLocationManager.shared.st_getCurrentLocation(config: .lowAccuracy) { _ in }
+STLocationManager.shared.st_getCurrentLocation(config: .default) { _ in }
 
-// 低精度配置（省电）
-let lowAccuracyConfig = STLocationConfig.lowAccuracy
-STLocationManager.shared.st_getCurrentLocation(config: lowAccuracyConfig) { result in
-    // 处理结果
-}
-
-// 自定义配置
-let customConfig = STLocationConfig(
+// 自定义
+let custom = STLocationConfig(
     desiredAccuracy: kCLLocationAccuracyBest,
     distanceFilter: 5.0,
     timeout: 20.0,
     maximumAge: 180.0
 )
-STLocationManager.shared.st_getCurrentLocation(config: customConfig) { result in
-    // 处理结果
-}
+STLocationManager.shared.st_getCurrentLocation(config: custom) { _ in }
 ```
 
-### 5. 持续位置更新
-
-```swift
-// 开始持续位置更新
-STLocationManager.shared.st_startUpdatingLocation { result in
-    switch result {
-    case .success(let locationInfo):
-        print("位置更新: \(locationInfo.formattedAddress)")
-    case .failure(let error):
-        print("位置更新失败: \(error.localizedDescription)")
-    }
-}
-
-// 停止位置更新
-STLocationManager.shared.st_stopUpdatingLocation()
-```
-
-### 6. 获取最后已知位置
-
-```swift
-if let lastLocation = STLocationManager.shared.st_getLastKnownLocation() {
-    print("最后位置: \(lastLocation.formattedAddress)")
-    print("时间: \(lastLocation.timestamp)")
-}
-```
-
-### 7. 清除位置缓存
-
-```swift
-STLocationManager.shared.st_clearLocationCache()
-```
-
-## 配置选项
-
-### STLocationConfig
+`STLocationConfig` 字段：
 
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `desiredAccuracy` | `CLLocationAccuracy` | `kCLLocationAccuracyNearestTenMeters` | 期望的定位精度 |
-| `distanceFilter` | `CLLocationDistance` | `10.0` | 位置更新的最小距离（米） |
-| `timeout` | `TimeInterval` | `30.0` | 获取位置的超时时间（秒） |
-| `maximumAge` | `TimeInterval` | `300.0` | 位置缓存的最大有效期（秒） |
+| `desiredAccuracy` | `CLLocationAccuracy` | `kCLLocationAccuracyNearestTenMeters` | 期望定位精度 |
+| `distanceFilter` | `CLLocationDistance` | `10.0` | 位置更新最小距离（米） |
+| `timeout` | `TimeInterval` | `30.0` | 获取位置超时（秒） |
+| `maximumAge` | `TimeInterval` | `300.0` | 位置缓存最大有效期（秒） |
 
-### 预设配置
-
-```swift
-// 默认配置
-STLocationConfig.default
-
-// 高精度配置
-STLocationConfig.highAccuracy
-
-// 低精度配置（省电）
-STLocationConfig.lowAccuracy
-```
-
-## 数据结构
-
-### STLocationInfo
-
-位置信息结构体，包含以下属性：
+<a id="types"></a>
+## 🧩 数据结构 | Types
 
 ```swift
 public struct STLocationInfo {
-    public let name: String?                    // 地点名称
-    public let country: String?                 // 国家
-    public let latitude: Double                 // 纬度
-    public let longitude: Double                // 经度
-    public let locality: String?                // 城市
-    public let subLocality: String?             // 区域
-    public let thoroughfare: String?            // 街道
-    public let subThoroughfare: String?         // 门牌号
-    public let isoCountryCode: String?          // 国家代码
-    public let administrativeArea: String?      // 省份/州
-    public let postalCode: String?              // 邮编
-    public let timestamp: Date                  // 时间戳
-    
-    // 计算属性
-    public var formattedAddress: String         // 格式化地址
-    public var coordinateString: String         // 坐标字符串
+    public let name: String?
+    public let country: String?
+    public let latitude: Double
+    public let longitude: Double
+    public let locality: String?
+    public let subLocality: String?
+    public let thoroughfare: String?
+    public let subThoroughfare: String?
+    public let isoCountryCode: String?
+    public let administrativeArea: String?
+    public let postalCode: String?
+    public let timestamp: Date
+
+    public var formattedAddress: String   // 格式化地址
+    public var coordinateString: String   // 坐标字符串
 }
-```
 
-### STLocationError
-
-错误类型枚举：
-
-```swift
 public enum STLocationError: Error {
-    case authorizationDenied        // 权限被拒绝
-    case authorizationRestricted    // 权限受限
-    case locationServicesDisabled   // 位置服务已禁用
-    case timeout                    // 获取位置超时
-    case networkError              // 网络错误
-    case geocodingFailed           // 地理编码失败
-    case unknown(Error)            // 未知错误
+    case authorizationDenied
+    case authorizationRestricted
+    case locationServicesDisabled
+    case timeout
+    case networkError
+    case geocodingFailed
+    case unknown(Error)
 }
 ```
 
-## 完整使用示例
+<a id="license"></a>
+## 📄 许可证 | License
 
-```swift
-import STLocation
+本项目采用 MIT 许可证，详见 [LICENSE](LICENSE)。
 
-class LocationViewController: UIViewController {
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        setupLocation()
-    }
-    
-    private func setupLocation() {
-        // 1. 检查权限状态
-        STLocationManager.shared.st_checkLocationPermission { [weak self] status in
-            switch status {
-            case .authorizedWhenInUse, .authorizedAlways:
-                self?.getCurrentLocation()
-            case .notDetermined:
-                self?.requestLocationPermission()
-            case .denied, .restricted:
-                self?.showPermissionAlert()
-            @unknown default:
-                break
-            }
-        }
-    }
-    
-    private func requestLocationPermission() {
-        STLocationManager.shared.st_requestWhenInUseAuthorization { [weak self] status in
-            if status == .authorizedWhenInUse {
-                self?.getCurrentLocation()
-            }
-        }
-    }
-    
-    private func getCurrentLocation() {
-        // 使用高精度配置
-        STLocationManager.shared.st_getCurrentLocation(config: .highAccuracy) { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let locationInfo):
-                    self?.updateUI(with: locationInfo)
-                case .failure(let error):
-                    self?.showError(error)
-                }
-            }
-        }
-    }
-    
-    private func updateUI(with locationInfo: STLocationInfo) {
-        // 更新界面显示位置信息
-        print("地址: \(locationInfo.formattedAddress)")
-        print("坐标: \(locationInfo.coordinateString)")
-    }
-    
-    private func showError(_ error: STLocationError) {
-        let alert = UIAlertController(title: "位置获取失败", message: error.localizedDescription, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "确定", style: .default))
-        present(alert, animated: true)
-    }
-    
-    private func showPermissionAlert() {
-        let alert = UIAlertController(title: "需要位置权限", message: "请在设置中开启位置权限", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "去设置", style: .default) { _ in
-            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(settingsURL)
-            }
-        })
-        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-        present(alert, animated: true)
-    }
-}
-```
+---
 
-## 注意事项
-
-1. **权限处理**: 确保在 Info.plist 中添加相应的权限说明
-2. **线程安全**: 所有回调都在主线程执行，但内部使用并发队列保证线程安全
-3. **电池优化**: 使用低精度配置可以节省电池电量
-4. **缓存机制**: 库会自动缓存位置信息，避免频繁请求
-5. **超时处理**: 设置合适的超时时间，避免长时间等待
-
-## 许可证
-
-MIT License
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 更新日志
-
-### 1.0.0
-- 初始版本发布
-- 支持单次定位和持续定位
-- 完善的权限管理
-- 地理编码功能
-- 位置缓存机制
+**STLocation** — a CoreLocation-based location manager for iOS & Swift. Keywords: *iOS, Swift, CoreLocation, geolocation, geocoding, permission, caching, Swift Package Manager*.
